@@ -5236,6 +5236,13 @@ class NumpyTwoInputOpsCorrectnessTest(testing.TestCase):
             knp.take(x, indices, axis=2), np.take(x, indices, axis=2)
         )
 
+        # Test with negative indices & axis=None, which index the
+        # flattened array
+        indices = np.array([-1, -24, -120, 5])
+        self.assertAllClose(
+            knp.take(x, indices, axis=None), np.take(x, indices, axis=None)
+        )
+
     @parameterized.named_parameters(
         named_product(
             [

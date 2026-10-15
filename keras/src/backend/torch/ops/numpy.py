@@ -2019,19 +2019,18 @@ def swapaxes(x, axis1, axis2):
 def take(x, indices, axis=None):
     x = convert_to_tensor(x)
     indices = convert_to_tensor(indices).long()
+    if axis is None:
+        x = torch.reshape(x, (-1,))
+        axis = 0
     # Correct the indices using "fill" mode which is the same as in jax
-    x_dim = x.shape[axis] if axis is not None else x.shape[0]
     indices = torch.where(
         indices < 0,
-        indices + x_dim,
+        indices + x.shape[axis],
         indices,
     )
     if x.ndim == 2 and axis == 0:
         # This case is equivalent to embedding lookup.
         return torch.nn.functional.embedding(indices, x)
-    if axis is None:
-        x = torch.reshape(x, (-1,))
-        axis = 0
     if axis is not None:
         axis = canonicalize_axis(axis, x.ndim)
         shape = x.shape[:axis] + indices.shape + x.shape[axis + 1 :]
