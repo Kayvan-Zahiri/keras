@@ -1486,7 +1486,19 @@ def dot_product_attention(
     if bias is not None:
         bias = convert_to_tensor(bias, dtype=compute_dtype)
 
-    _, _, _, H = key.shape
+    _, _, K, H = key.shape
+    N = query.shape[2]
+    if N != K:
+        # Grouped-query attention: query head `n` attends with key/value head
+        # `n // (N // K)`.
+        if N % K != 0:
+            raise ValueError(
+                "The number of query heads must be a multiple of the number "
+                f"of key/value heads. Received: query.shape={query.shape}, "
+                f"key.shape={key.shape}."
+            )
+        key = np.repeat(key, N // K, axis=2)
+        value = np.repeat(value, N // K, axis=2)
     scale = (1.0 / np.sqrt(H)) if scale is None else scale
     return _dot_product_attention_xla(
         query, key, value, bias, mask, is_causal, scale

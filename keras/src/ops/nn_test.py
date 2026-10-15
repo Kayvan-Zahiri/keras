@@ -4458,10 +4458,6 @@ class NNOpsBehaviorTest(testing.TestCase):
             knn.space_to_depth(x, block_size=-1)
 
 
-@pytest.mark.skipif(
-    backend.backend() == "numpy",
-    reason="Key/Value broadcasting is not supported on the numpy backend.",
-)
 class DotProductAttentionGQATest(testing.TestCase):
     def test_gqa_broadcasting(self):
         batch_size = 2
@@ -4486,6 +4482,22 @@ class DotProductAttentionGQATest(testing.TestCase):
         self.assertEqual(
             output.shape, (batch_size, q_len, num_q_heads, head_dim)
         )
+
+    def test_gqa_matches_repeated_heads(self):
+        # Query head `n` uses key/value head `n // 2`, so GQA equals MHA
+        # with each key/value head repeated over its group.
+        rng = np.random.default_rng(0)
+        query = rng.standard_normal((2, 5, 4, 8)).astype("float32")
+        key = rng.standard_normal((2, 6, 2, 8)).astype("float32")
+        value = rng.standard_normal((2, 6, 2, 8)).astype("float32")
+        expected = knn.dot_product_attention(
+            query,
+            np.repeat(key, 2, axis=2),
+            np.repeat(value, 2, axis=2),
+            is_causal=True,
+        )
+        output = knn.dot_product_attention(query, key, value, is_causal=True)
+        self.assertAllClose(output, expected)
 
 
 @pytest.mark.no_pytest_xdist
